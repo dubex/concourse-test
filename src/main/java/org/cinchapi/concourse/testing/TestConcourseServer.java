@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Random;
 
 import org.cinchapi.concourse.Concourse;
 import org.cinchapi.concourse.config.ConcoursePreferences;
@@ -95,6 +96,19 @@ public class TestConcourseServer {
         String data = installDirectory + File.separator + "data";
         prefs.setBufferDirectory(data + File.separator + "buffer");
         prefs.setDatabaseDirectory(data + File.separator + "database");
+        prefs.setClientPort(getOpenPort());
+    }
+
+    /**
+     * Get an open port.
+     * @return the port
+     */
+    private static int getOpenPort() {
+        int min = 49512;
+        int max = 65535;
+        int port = RAND.nextInt(min) + (max - min);
+        // TODO add logic to check if port is available
+        return port;
     }
 
     /**
@@ -159,7 +173,12 @@ public class TestConcourseServer {
     /**
      * The version of the default server installer.
      */
-    private static final String DEFAULT_INSTALLER_VERSION = "0.3.1.1248";
+    private static final String DEFAULT_INSTALLER_VERSION = "0.3.2.1281";
+
+    /**
+     * The port on which the server runs.
+     */
+    private static final int SERVER_PORT = 1717;
 
     // ---relative paths
     private static final String CONF = "conf";
@@ -168,6 +187,9 @@ public class TestConcourseServer {
     // ---logger
     private static final Logger log = LoggerFactory
             .getLogger(TestConcourseServer.class);
+
+    // ---random
+    private static final Random RAND = new Random();
 
     /**
      * The server application install directory;
@@ -205,7 +227,7 @@ public class TestConcourseServer {
      * @return the connection handler
      */
     public Concourse connect(String username, String password) {
-        return Concourse.connect("localhost", 1717, username, password);
+        return Concourse.connect("localhost", SERVER_PORT, username, password);
     }
 
     /**
