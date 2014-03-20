@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package org.cinchapi.concourse.testing;
+package org.cinchapi.concourse.server;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,9 +34,12 @@ import java.util.Random;
 
 import org.cinchapi.concourse.Concourse;
 import org.cinchapi.concourse.config.ConcoursePreferences;
+import org.cinchapi.concourse.time.Time;
 import org.cinchapi.concourse.util.Processes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.Iterables;
@@ -69,7 +72,8 @@ public class TestConcourseServer {
      * @return the TestConcourseServer handler
      */
     public static TestConcourseServer create(String installer) {
-        return create(installer, DEFAULT_INSTALL_HOME);
+        return create(installer,
+                DEFAULT_INSTALL_HOME + File.separator + Time.now());
     }
 
     /**
@@ -97,10 +101,13 @@ public class TestConcourseServer {
         prefs.setBufferDirectory(data + File.separator + "buffer");
         prefs.setDatabaseDirectory(data + File.separator + "database");
         prefs.setClientPort(getOpenPort());
+        prefs.setLogLevel(Level.DEBUG);
+        prefs.setShutdownPort(getOpenPort());
     }
 
     /**
      * Get an open port.
+     * 
      * @return the port
      */
     private static int getOpenPort() {
@@ -196,6 +203,11 @@ public class TestConcourseServer {
      */
     private final String installDirectory;
 
+    /**
+     * Construct a new instance.
+     * 
+     * @param installDirectory
+     */
     private TestConcourseServer(String installDirectory) {
         this.installDirectory = installDirectory;
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
@@ -235,16 +247,31 @@ public class TestConcourseServer {
      * files and associated data.
      */
     public void destroy() {
-        if(isRunning()) {
-            stop();
+        if(Files.exists(Paths.get(installDirectory))) { // check if server has
+                                                        // been manually
+                                                        // destroyed
+            if(isRunning()) {
+                stop();
+            }
+            try {
+                deleteDirectory(installDirectory);
+                log.info("Deleted server install directory at {}",
+                        installDirectory);
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
         }
-        try {
-            deleteDirectory(installDirectory);
-            log.info("Deleted server install directory at {}", installDirectory);
-        }
-        catch (Exception e) {
-            throw Throwables.propagate(e);
-        }
+
+    }
+
+    /**
+     * Return the {@link #installDirectory} for this server.
+     * 
+     * @return the install directory
+     */
+    public String getInstallDirectory() {
+        return installDirectory;
     }
 
     /**
