@@ -182,11 +182,6 @@ public class TestConcourseServer {
      */
     private static final String DEFAULT_INSTALLER_VERSION = "0.3.2.1281";
 
-    /**
-     * The port on which the server runs.
-     */
-    private static final int SERVER_PORT = 1717;
-
     // ---relative paths
     private static final String CONF = "conf";
     private static final String BIN = "bin";
@@ -204,12 +199,19 @@ public class TestConcourseServer {
     private final String installDirectory;
 
     /**
+     * The handler for the server's preferences.
+     */
+    private final ConcoursePreferences prefs;
+
+    /**
      * Construct a new instance.
      * 
      * @param installDirectory
      */
     private TestConcourseServer(String installDirectory) {
         this.installDirectory = installDirectory;
+        this.prefs = ConcoursePreferences.load(installDirectory
+                + File.separator + CONF + File.separator + "concourse.prefs");
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
 
             @Override
@@ -239,7 +241,8 @@ public class TestConcourseServer {
      * @return the connection handler
      */
     public Concourse connect(String username, String password) {
-        return Concourse.connect("localhost", SERVER_PORT, username, password);
+        return Concourse.connect("localhost", prefs.getClientPort(), username,
+                password);
     }
 
     /**
