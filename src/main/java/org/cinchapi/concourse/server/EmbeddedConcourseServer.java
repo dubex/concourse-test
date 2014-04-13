@@ -178,7 +178,7 @@ public class EmbeddedConcourseServer {
             // prompt, we have to "kill" the process, otherwise the server
             // install will hang.
             Stopwatch watch = Stopwatch.createStarted();
-            while (watch.elapsed(TimeUnit.SECONDS) < 5) {
+            while (watch.elapsed(TimeUnit.SECONDS) < 10) {
                 continue;
             }
             watch.stop();
