@@ -177,13 +177,14 @@ public class EmbeddedConcourseServer {
             // order to make optional system wide In order to get around this
             // prompt, we have to "kill" the process, otherwise the server
             // install will hang.
-            Stopwatch watch = Stopwatch.createStarted();
-            while (watch.elapsed(TimeUnit.SECONDS) < 10) {
-                continue;
-            }
-            watch.stop();
-            process.destroy();
-            TerminalFactory.get().restore();
+//            Stopwatch watch = Stopwatch.createStarted();
+//            while (watch.elapsed(TimeUnit.SECONDS) < 1) {
+//                continue;
+//            }
+//            watch.stop();
+//            process.destroy();
+//            TerminalFactory.get().restore();
+            process.waitFor();
             String application = directory + File.separator
                     + "concourse-server"; // the install directory for the
                                           // concourse-server application
