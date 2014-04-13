@@ -49,7 +49,7 @@ public class EmbeddedConcourseServerTest {
         @Override
         protected void starting(Description description) {
 //            server = EmbeddedConcourseServer.createAtVersion("0.3.3");
-            server = EmbeddedConcourseServer.createConcourseServer(new File("/Dropbox/Cinchapi/code/java/concourse/concourse-server/build/distributions/concourse-server-0.4.0.105-SNAPSHOT.bin"));
+            server = EmbeddedConcourseServer.createConcourseServer(new File("concourse-server-0.4.0.105-SNAPSHOT.bin"));
         }
 
         @Override
