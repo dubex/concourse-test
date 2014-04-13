@@ -167,7 +167,6 @@ public class EmbeddedConcourseServer {
                     + TARGET_BINARY_NAME);
             Files.deleteIfExists(binary);
             Files.copy(Paths.get(installer), binary);
-            Runtime.getRuntime().exec("cd " + directory);
             ProcessBuilder builder = new ProcessBuilder(Lists.newArrayList(
                     "sh", binary.toString()));
             builder.directory(new File(directory));
@@ -177,14 +176,13 @@ public class EmbeddedConcourseServer {
             // order to make optional system wide In order to get around this
             // prompt, we have to "kill" the process, otherwise the server
             // install will hang.
-//            Stopwatch watch = Stopwatch.createStarted();
-//            while (watch.elapsed(TimeUnit.SECONDS) < 1) {
-//                continue;
-//            }
-//            watch.stop();
-//            process.destroy();
-//            TerminalFactory.get().restore();
-            process.waitFor();
+            Stopwatch watch = Stopwatch.createStarted();
+            while (watch.elapsed(TimeUnit.SECONDS) < 1) {
+                continue;
+            }
+            watch.stop();
+            process.destroy();
+            TerminalFactory.get().restore();
             String application = directory + File.separator
                     + "concourse-server"; // the install directory for the
                                           // concourse-server application
