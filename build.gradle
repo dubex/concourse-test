@@ -8,9 +8,11 @@ repositories {
 }
 
 dependencies {
-    compile 'org.cinchapi:concourse:0.3.2'
+    compile 'org.cinchapi:concourse:0.3.3'
     compile 'org.cinchapi:concourse-config:1.0.2'
-    testCompile 'junit:junit:4.11'
+    compile 'org.jsoup:jsoup:1.7.3'
+    compile 'junit:junit:4.11'
+    compile 'jline:jline:2.11' 
 }
 
 task wrapper(type: Wrapper) {
@@ -79,7 +81,7 @@ uploadArchives {
             pom.version = '1.0.0'
 
             pom.project {
-               name 'Concourse Configuration Framework'
+               name 'Concourse Testing Framework'
                packaging 'jar'
                description 'A framework for writing end-to-end integration tests using the Concourse client and server'
                url 'http://cinchapi.org/concourse'
