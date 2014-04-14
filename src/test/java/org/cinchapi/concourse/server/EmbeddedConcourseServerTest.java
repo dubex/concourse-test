@@ -23,7 +23,6 @@
  */
 package org.cinchapi.concourse.server;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -48,8 +47,7 @@ public class EmbeddedConcourseServerTest {
 
         @Override
         protected void starting(Description description) {
-//            server = EmbeddedConcourseServer.createAtVersion("0.3.3");
-            server = EmbeddedConcourseServer.createConcourseServer(new File("concourse-server-0.4.0.105-SNAPSHOT.bin"));
+            server = EmbeddedConcourseServer.createConcourseServer("0.3.4");
         }
 
         @Override
