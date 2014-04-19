@@ -28,7 +28,7 @@ import java.io.File;
 import javax.annotation.Nullable;
 
 import org.cinchapi.concourse.Concourse;
-import org.cinchapi.concourse.server.EmbeddedConcourseServer;
+import org.cinchapi.concourse.server.ManagedConcourseServer;
 import org.junit.Rule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
@@ -67,7 +67,7 @@ public abstract class ClientServerTest {
      * lifecycle and management operations on the server using this variable and
      * may also interact via the {@link #client} API.
      */
-    protected EmbeddedConcourseServer server = null;
+    protected ManagedConcourseServer server = null;
 
     /**
      * This watcher clears previously registered {@link Variables} on startup
@@ -98,12 +98,12 @@ public abstract class ClientServerTest {
         protected void starting(Description description) {
             Variables.clear();
             if(installerPath() == null) {
-                server = EmbeddedConcourseServer
-                        .createConcourseServer(getServerVersion());
+                server = ManagedConcourseServer
+                        .manageNewServer(getServerVersion());
             }
             else {
-                server = EmbeddedConcourseServer
-                        .createConcourseServer(installerPath());
+                server = ManagedConcourseServer
+                        .manageNewServer(installerPath());
             }
             server.start();
             client = server.connect();

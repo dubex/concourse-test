@@ -53,75 +53,64 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 /**
- * This class is a handler for an external ConcourseServer instance that can be
- * embedded in another application (while continuing to run in a separate
- * process. In particular, this class provides methods to manage the server even
- * though it is launched in a separate JVM.
+ * A {@link ManagedConcourseServer} is an external server process that can be
+ * programmatically controlled within another application. This class is useful
+ * for applications that want to "embed" a Concourse Server for the duration of
+ * the application's life cycle and then forget about its existence afterwards.
  * 
  * @author jnelson
  */
-public class EmbeddedConcourseServer {
+public class ManagedConcourseServer {
 
     /**
-     * Create an {@link EmbeddedConcourseServer from the {@code installer}.
+     * Create an {@link ManagedConcourseServer from the {@code installer}.
      * 
      * @param installer
      * @return the EmbeddedConcourseServer
      */
-    public static EmbeddedConcourseServer createConcourseServer(File installer) {
-        return createConcourseServer(installer, DEFAULT_INSTALL_HOME
-                + File.separator + Time.now());
+    public static ManagedConcourseServer manageNewServer(File installer) {
+        return manageNewServer(installer, DEFAULT_INSTALL_HOME + File.separator
+                + Time.now());
     }
 
     /**
-     * Create an {@link EmbeddedConcourseServer} from the {@code installer} in
+     * Create an {@link ManagedConcourseServer} from the {@code installer} in
      * {@code directory}.
      * 
      * @param installer
      * @param directory
      * @return the EmbeddedConcourseServer
      */
-    public static EmbeddedConcourseServer createConcourseServer(File installer,
+    public static ManagedConcourseServer manageNewServer(File installer,
             String directory) {
-        return new EmbeddedConcourseServer(install(installer.getAbsolutePath(),
+        return new ManagedConcourseServer(install(installer.getAbsolutePath(),
                 directory));
     }
 
     /**
-     * Create an {@link EmbeddedConcourseServer} at {@code version}.
+     * Create an {@link ManagedConcourseServer} at {@code version}.
      * 
      * @param version
      * @return the EmbeddedConcourseServer
      */
-    public static EmbeddedConcourseServer createConcourseServer(String version) {
-        return createConcourseServer(version, DEFAULT_INSTALL_HOME
-                + File.separator + Time.now());
+    public static ManagedConcourseServer manageNewServer(String version) {
+        return manageNewServer(version, DEFAULT_INSTALL_HOME + File.separator
+                + Time.now());
     }
 
     /**
-     * Create an {@link EmbeddedConcourseServer} at {@code version} in
+     * Create an {@link ManagedConcourseServer} at {@code version} in
      * {@code directory}.
      * 
      * @param version
      * @param directory
      * @return the EmbeddedConcourseServer
      */
-    public static EmbeddedConcourseServer createConcourseServer(String version,
+    public static ManagedConcourseServer manageNewServer(String version,
             String directory) {
-        return createConcourseServer(
+        return manageNewServer(
                 new File(ConcourseServerDownloader.download(version)),
                 directory);
-    }
-
-    /**
-     * Return a handler for the Concourse Server that is located in
-     * {@code installDirectory}.
-     * 
-     * @param installDirectory
-     * @return the server handler
-     */
-    public static EmbeddedConcourseServer getHandler(String installDirectory) {
-        return new EmbeddedConcourseServer(installDirectory);
     }
 
     /**
@@ -248,7 +237,7 @@ public class EmbeddedConcourseServer {
 
     // ---logger
     private static final Logger log = LoggerFactory
-            .getLogger(EmbeddedConcourseServer.class);
+            .getLogger(ManagedConcourseServer.class);
 
     // ---random
     private static final Random RAND = new Random();
@@ -268,7 +257,7 @@ public class EmbeddedConcourseServer {
      * 
      * @param installDirectory
      */
-    private EmbeddedConcourseServer(String installDirectory) {
+    private ManagedConcourseServer(String installDirectory) {
         this.installDirectory = installDirectory;
         this.prefs = ConcoursePreferences.load(installDirectory
                 + File.separator + CONF + File.separator + "concourse.prefs");

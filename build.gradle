@@ -35,7 +35,7 @@ version = globalVersion
 
 jar {
     manifest {
-        attributes("Specificiation-Title": "Concourse Testing Framework", "Specificiation-Version": version, "Implementation-Version": version)
+        attributes("Specificiation-Title": "Concourse Test Framework", "Specificiation-Version": version, "Implementation-Version": version)
     }
 }
 
@@ -81,7 +81,7 @@ uploadArchives {
             pom.version = '1.0.0'
 
             pom.project {
-               name 'Concourse Testing Framework'
+               name 'Concourse Test Framework'
                packaging 'jar'
                description 'A framework for writing end-to-end integration tests using the Concourse client and server'
                url 'http://cinchapi.org/concourse'

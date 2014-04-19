@@ -34,20 +34,20 @@ import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
 /**
- * Unit tests for {@link EmbeddedConcourseServer}.
+ * Unit tests for {@link ManagedConcourseServer}.
  * 
  * @author jnelson
  */
-public class EmbeddedConcourseServerTest {
+public class ManagedConcourseServerTest {
     
-    private EmbeddedConcourseServer server = null;
+    private ManagedConcourseServer server = null;
 
     @Rule
     public TestWatcher watcher = new TestWatcher() {
 
         @Override
         protected void starting(Description description) {
-            server = EmbeddedConcourseServer.createConcourseServer("0.3.4");
+            server = ManagedConcourseServer.manageNewServer("0.3.4");
         }
 
         @Override
