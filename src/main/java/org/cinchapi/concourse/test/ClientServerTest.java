@@ -24,6 +24,8 @@
 package org.cinchapi.concourse.test;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import javax.annotation.Nullable;
 
@@ -38,9 +40,8 @@ import org.junit.runner.Description;
  * the public client API. This base class handles boilerplate logic for creating
  * a new server for each test and managing resources.
  * <ul>
- * <li>Specify the server version to test against using the
- * {@link #getServerVersion()} method or specify a custom installer file using
- * the {@link #installerPath()} method.</li>
+ * <li>Specify the server version or custom installer file to test against using
+ * the {@link #getServerVersion()} method.</li>
  * <li>Specify actions to take before each test using the
  * {@link #beforeEachTest()} method.</li>
  * <li>Specify actions to take after each test using the
@@ -97,7 +98,20 @@ public abstract class ClientServerTest {
         @Override
         protected void starting(Description description) {
             Variables.clear();
-            if(installerPath() == null) {
+            if(Files.exists(Paths.get(getServerVersion()))) { // if
+                                                              // #getServerVersion
+                                                              // returns a valid
+                                                              // path, then
+                                                              // assume its an
+                                                              // installer and
+                                                              // pass the
+                                                              // appropriate
+                                                              // File for
+                                                              // construction
+                server = ManagedConcourseServer.manageNewServer(new File(
+                        getServerVersion()));
+            }
+            else if(installerPath() == null) {
                 server = ManagedConcourseServer
                         .manageNewServer(getServerVersion());
             }
@@ -128,7 +142,8 @@ public abstract class ClientServerTest {
 
     /**
      * This method is provided for the subclass to specify the appropriate
-     * version number to test against.
+     * release version number OR path to an installer file (i.e. an unreleased
+     * SNAPSHOT version) to test against.
      * 
      * @return the version number
      */
@@ -141,8 +156,11 @@ public abstract class ClientServerTest {
      * used.
      * 
      * @return the custom installer path
+     * @deprecated Return the path to the installer in
+     *             {@link #getServerVersion()} instead
      */
     @Nullable
+    @Deprecated
     protected File installerPath() {
         return null;
     }

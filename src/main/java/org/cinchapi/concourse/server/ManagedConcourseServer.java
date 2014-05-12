@@ -25,20 +25,27 @@ package org.cinchapi.concourse.server;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.SocketException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.MessageFormat;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
-
 import jline.TerminalFactory;
 
 import org.cinchapi.concourse.Concourse;
+import org.cinchapi.concourse.Timestamp;
 import org.cinchapi.concourse.config.ConcoursePreferences;
+import org.cinchapi.concourse.thrift.Operator;
 import org.cinchapi.concourse.time.Time;
 import org.cinchapi.concourse.util.ConcourseServerDownloader;
 import org.cinchapi.concourse.util.Processes;
@@ -128,6 +135,45 @@ public class ManagedConcourseServer {
         prefs.setClientPort(getOpenPort());
         prefs.setLogLevel(Level.DEBUG);
         prefs.setShutdownPort(getOpenPort());
+    }
+
+    /**
+     * Collect and return all the {@code jar} files that are located in the
+     * directory at {@code path}. If {@code path} is not a directory, but is
+     * instead, itself, a jar file, then return a list that contains in.
+     * 
+     * @param path
+     * @return the list of jar file URL paths
+     */
+    private static URL[] gatherJars(String path) {
+        List<URL> jars = Lists.newArrayList();
+        gatherJars(path, jars);
+        return jars.toArray(new URL[] {});
+    }
+
+    /**
+     * Collect all the {@code jar} files that are located in the directory at
+     * {@code path} and place them into the list of {@code jars}. If
+     * {@code path} is not a directory, but is instead, itself a jar file, then
+     * place it in the list.
+     * 
+     * @param path
+     * @param jars
+     */
+    private static void gatherJars(String path, List<URL> jars) {
+        try {
+            if(Files.isDirectory(Paths.get(path))) {
+                for (Path p : Files.newDirectoryStream(Paths.get(path))) {
+                    gatherJars(p.toString(), jars);
+                }
+            }
+            else if(path.endsWith(".jar")) {
+                jars.add(new URL("file://" + path.toString()));
+            }
+        }
+        catch (IOException e) {
+            throw Throwables.propagate(e);
+        }
     }
 
     /**
@@ -290,8 +336,7 @@ public class ManagedConcourseServer {
      * @return the connection handler
      */
     public Concourse connect(String username, String password) {
-        return Concourse.connect("localhost", prefs.getClientPort(), username,
-                password);
+        return new Client(username, password);
     }
 
     /**
@@ -419,6 +464,485 @@ public class ManagedConcourseServer {
         catch (Exception e) {
             throw Throwables.propagate(e);
         }
+    }
+
+    /**
+     * A {@link Concourse} client wrapper that delegates to the jars located in
+     * the server's lib directory so that it uses the same version of the code.
+     * 
+     * @author jnelson
+     */
+    private final class Client extends Concourse {
+
+        private final Object delegate;
+        private final Class<?> clazz;
+        private ClassLoader loader;
+
+        /**
+         * Construct a new instance.
+         * 
+         * @param username
+         * @param password
+         * @throws Exception
+         */
+        public Client(String username, String password) {
+            try {
+                this.loader = new URLClassLoader(
+                        gatherJars(getInstallDirectory()), null);
+                this.clazz = loader
+                        .loadClass("org.cinchapi.concourse.Concourse");
+                this.delegate = clazz.getMethod("connect", String.class,
+                        int.class, String.class, String.class).invoke(null,
+                        "localhost", getClientPort(), username, password);
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+
+        @Override
+        public void abort() {
+            invoke("abort").with();
+        }
+
+        @Override
+        public Map<Long, Boolean> add(String key, Object value,
+                Collection<Long> records) {
+            return invoke("add", String.class, Object.class, Collection.class)
+                    .with(key, value, records);
+        }
+
+        @Override
+        public <T> boolean add(String key, T value, long record) {
+            return invoke("add", String.class, Object.class, long.class).with(
+                    key, value, record);
+        }
+
+        @Override
+        public Map<Timestamp, String> audit(long record) {
+            return invoke("audit", long.class).with(record);
+        }
+
+        @Override
+        public Map<Timestamp, String> audit(String key, long record) {
+            return invoke("audit", String.class, long.class).with(key, record);
+        }
+
+        @Override
+        public void clear(Collection<String> keys, Collection<Long> records) {
+            invoke("clear", Collection.class, Collection.class).with(keys,
+                    records);
+        }
+
+        @Override
+        public void clear(Collection<String> keys, long record) {
+            invoke("clear", Collection.class, long.class).with(keys, record);
+        }
+
+        @Override
+        public void clear(String key, Collection<Long> records) {
+            invoke("clear", String.class, Collection.class).with(key, records);
+
+        }
+
+        @Override
+        public void clear(String key, long record) {
+            invoke("clear", String.class, long.class).with(key, record);
+
+        }
+
+        @Override
+        public boolean commit() {
+            return invoke("commit").with();
+        }
+
+        @Override
+        public long create() {
+            return invoke("create").with();
+        }
+
+        @Override
+        public Map<Long, Set<String>> describe(Collection<Long> records) {
+            return invoke("describe", Collection.class).with(records);
+        }
+
+        @Override
+        public Map<Long, Set<String>> describe(Collection<Long> records,
+                Timestamp timestamp) {
+            return invoke("describe", Collection.class, Timestamp.class).with(
+                    records, timestamp);
+        }
+
+        @Override
+        public Set<String> describe(long record) {
+            return invoke("describe", long.class).with(record);
+        }
+
+        @Override
+        public Set<String> describe(long record, Timestamp timestamp) {
+            return invoke("describe", long.class, Timestamp.class).with(record,
+                    timestamp);
+        }
+
+        @Override
+        public void exit() {
+            invoke("exit").with();
+        }
+
+        @Override
+        public Map<Long, Map<String, Set<Object>>> fetch(
+                Collection<String> keys, Collection<Long> records) {
+            return invoke("fetch", Collection.class, Collection.class).with(
+                    keys, records);
+        }
+
+        @Override
+        public Map<Long, Map<String, Set<Object>>> fetch(
+                Collection<String> keys, Collection<Long> records,
+                Timestamp timestamp) {
+            return invoke("fetch", Collection.class, Collection.class,
+                    Timestamp.class).with(keys, records, timestamp);
+        }
+
+        @Override
+        public Map<String, Set<Object>> fetch(Collection<String> keys,
+                long record) {
+            return invoke("fetch", Collection.class, long.class).with(keys,
+                    record);
+        }
+
+        @Override
+        public Map<String, Set<Object>> fetch(Collection<String> keys,
+                long record, Timestamp timestamp) {
+            return invoke("fetch", String.class, long.class, Timestamp.class)
+                    .with(keys, record, timestamp);
+        }
+
+        @Override
+        public Map<Long, Set<Object>> fetch(String key, Collection<Long> records) {
+            return invoke("fetch", String.class, Collection.class).with(key,
+                    records);
+        }
+
+        @Override
+        public Map<Long, Set<Object>> fetch(String key,
+                Collection<Long> records, Timestamp timestamp) {
+            return invoke("fetch", String.class, Collection.class,
+                    Timestamp.class).with(key, records, timestamp);
+        }
+
+        @Override
+        public Set<Object> fetch(String key, long record) {
+            return invoke("fetch", String.class, long.class).with(key, record);
+        }
+
+        @Override
+        public Set<Object> fetch(String key, long record, Timestamp timestamp) {
+            return invoke("fetch", String.class, long.class, Timestamp.class)
+                    .with(key, record, timestamp);
+        }
+
+        @Override
+        public Set<Long> find(String key, Operator operator, Object value) {
+            return invoke("find", String.class, Operator.class, Object.class)
+                    .with(key, operator, value);
+        }
+
+        @Override
+        public Set<Long> find(String key, Operator operator, Object value,
+                Object value2) {
+            return invoke("find", String.class, Operator.class, Object.class,
+                    Object.class).with(key, operator, value, value2);
+        }
+
+        @Override
+        public Set<Long> find(String key, Operator operator, Object value,
+                Object value2, Timestamp timestamp) {
+            return invoke("find", String.class, Operator.class, Object.class,
+                    Object.class, Timestamp.class).with(key, operator, value,
+                    value2);
+        }
+
+        @Override
+        public Set<Long> find(String key, Operator operator, Object value,
+                Timestamp timestamp) {
+            return invoke("find", String.class, Operator.class, Object.class,
+                    Timestamp.class).with(key, operator, value, timestamp);
+        }
+
+        @Override
+        public Map<Long, Map<String, Object>> get(Collection<String> keys,
+                Collection<Long> records) {
+            return invoke("get", Collection.class, Collection.class).with(keys,
+                    records);
+        }
+
+        @Override
+        public Map<Long, Map<String, Object>> get(Collection<String> keys,
+                Collection<Long> records, Timestamp timestamp) {
+            return invoke("get", Collection.class, Collection.class,
+                    Timestamp.class).with(keys, records, timestamp);
+        }
+
+        @Override
+        public Map<String, Object> get(Collection<String> keys, long record) {
+            return invoke("get", Collection.class, long.class).with(keys,
+                    record);
+        }
+
+        @Override
+        public Map<String, Object> get(Collection<String> keys, long record,
+                Timestamp timestamp) {
+            return invoke("get", Collection.class, long.class, Timestamp.class)
+                    .with(keys, record, timestamp);
+        }
+
+        @Override
+        public Map<Long, Object> get(String key, Collection<Long> records) {
+            return invoke("get", String.class, Collection.class).with(key,
+                    records);
+        }
+
+        @Override
+        public Map<Long, Object> get(String key, Collection<Long> records,
+                Timestamp timestamp) {
+            return invoke("get", String.class, Collection.class,
+                    Timestamp.class).with(key, records, timestamp);
+        }
+
+        @Override
+        public <T> T get(String key, long record) {
+            return invoke("get", String.class, long.class).with(key, record);
+        }
+
+        @Override
+        public <T> T get(String key, long record, Timestamp timestamp) {
+            return invoke("get", String.class, long.class, Timestamp.class)
+                    .with(key, record, timestamp);
+        }
+
+        @Override
+        public String getServerVersion() {
+            return invoke("getServerVersion").with();
+        }
+
+        @Override
+        public Map<Long, Boolean> link(String key, long source,
+                Collection<Long> destinations) {
+            return invoke("link", String.class, long.class, Collection.class)
+                    .with(key, source, destinations);
+        }
+
+        @Override
+        public boolean link(String key, long source, long destination) {
+            return invoke("link", String.class, long.class, long.class).with(
+                    key, source, destination);
+        }
+
+        @Override
+        public Map<Long, Boolean> ping(Collection<Long> records) {
+            return invoke("ping", Collection.class).with(records);
+        }
+
+        @Override
+        public boolean ping(long record) {
+            return invoke("ping", long.class).with(record);
+        }
+
+        @Override
+        public Map<Long, Boolean> remove(String key, Object value,
+                Collection<Long> records) {
+            return invoke("remove", String.class, Object.class,
+                    Collection.class).with(key, value, records);
+        }
+
+        @Override
+        public <T> boolean remove(String key, T value, long record) {
+            return invoke("remove", String.class, Object.class, long.class)
+                    .with(key, value, record);
+        }
+
+        @Override
+        public void revert(Collection<String> keys, Collection<Long> records,
+                Timestamp timestamp) {
+            invoke("revert", Collection.class, Collection.class,
+                    Timestamp.class).with(keys, records, timestamp);
+
+        }
+
+        @Override
+        public void revert(Collection<String> keys, long record,
+                Timestamp timestamp) {
+            invoke("revert", String.class, long.class, Timestamp.class).with(
+                    keys, record, timestamp);
+
+        }
+
+        @Override
+        public void revert(String key, Collection<Long> records,
+                Timestamp timestamp) {
+            invoke("revert", String.class, Collection.class, Timestamp.class)
+                    .with(key, records, timestamp);
+
+        }
+
+        @Override
+        public void revert(String key, long record, Timestamp timestamp) {
+            invoke("revert", String.class, long.class, Timestamp.class).with(
+                    key, record, timestamp);
+
+        }
+
+        @Override
+        public Set<Long> search(String key, String query) {
+            return invoke("search", String.class, String.class)
+                    .with(key, query);
+        }
+
+        @Override
+        public void set(String key, Object value, Collection<Long> records) {
+            invoke("set", String.class, Object.class, Collection.class).with(
+                    key, value, records);
+        }
+
+        @Override
+        public <T> void set(String key, T value, long record) {
+            invoke("set", String.class, Object.class, long.class).with(key,
+                    value, record);
+
+        }
+
+        @Override
+        public void stage() {
+            invoke("stage").with();
+
+        }
+
+        @Override
+        public boolean unlink(String key, long source, long destination) {
+            return invoke("unlink", String.class, long.class, long.class).with(
+                    key, source, destination);
+        }
+
+        @Override
+        public boolean verify(String key, Object value, long record) {
+            return invoke("verify", String.class, Object.class, long.class)
+                    .with(key, value, record);
+        }
+
+        @Override
+        public boolean verify(String key, Object value, long record,
+                Timestamp timestamp) {
+            return invoke("audit", String.class, Object.class, long.class,
+                    Timestamp.class).with(key, value, record, timestamp);
+        }
+
+        @Override
+        public boolean verifyAndSwap(String key, Object expected, long record,
+                Object replacement) {
+            return invoke("verifyAndSwap", String.class, Object.class,
+                    long.class, Object.class).with(key, expected, record,
+                    replacement);
+        }
+
+        /**
+         * Return an invocation wrapper for the named {@code method} with the
+         * specified {@code parameterTypes}.
+         * 
+         * @param method
+         * @param parameterTypes
+         * @return the invocation wrapper
+         */
+        private Method0 invoke(String method, Class<?>... parameterTypes) {
+            try {
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    // NOTE: We must search through each of the parameterTypes
+                    // to see if they should be loaded from the server's
+                    // classpath.
+                    if(parameterTypes[i] == Timestamp.class) {
+                        parameterTypes[i] = loader
+                                .loadClass("org.cinchapi.concourse.Timestamp");
+                    }
+                    else if(parameterTypes[i] == Operator.class) {
+                        parameterTypes[i] = loader
+                                .loadClass("org.cinchapi.concourse.thrift.Operator");
+                    }
+                    else{
+                        continue;
+                    }
+                }
+                return new Method0(clazz.getMethod(method, parameterTypes));
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+
+        /**
+         * A wrapper around a {@link Method} object that funnels all invocations
+         * to the {@link #delegate}.
+         * 
+         * @author jnelson
+         */
+        private class Method0 {
+
+            /**
+             * The method to invoke.
+             */
+            Method method;
+
+            /**
+             * Construct a new instance.
+             * 
+             * @param method
+             */
+            public Method0(Method method) {
+                this.method = method;
+            }
+
+            /**
+             * Invoke the wrapped method against the {@link #delegate} with the
+             * specified args.
+             * 
+             * @param args
+             * @return the result of invocation
+             */
+            @SuppressWarnings("unchecked")
+            public <T> T with(Object... args) {
+                try {
+                    for (int i = 0; i < args.length; i++) {
+                        // NOTE: We must go through each of the args to see if
+                        // they must be converted to an object that is loaded
+                        // from the server's classpath.
+                        if(args[i] instanceof Timestamp) {
+                            Timestamp obj = (Timestamp) args[i];
+                            args[i] = loader
+                                    .loadClass(
+                                            "org.cinchapi.concourse.Timestamp")
+                                    .getMethod("fromMicros", long.class)
+                                    .invoke(null, obj.getMicros());
+                        }
+                        else if(args[i] == Operator.class) {
+                            Operator obj = (Operator) args[i];
+                            args[i] = loader
+                                    .loadClass(
+                                            "org.cinchapi.concourse.thrift.Operator")
+                                    .getMethod("findByValue", int.class)
+                                    .invoke(null, obj.ordinal());
+                        }
+                        else{
+                            continue;
+                        }
+                    }
+                    return (T) method.invoke(delegate, args);
+                }
+                catch (Exception e) {
+                    throw Throwables.propagate(e);
+                }
+            }
+
+        }
+
     }
 
 }
