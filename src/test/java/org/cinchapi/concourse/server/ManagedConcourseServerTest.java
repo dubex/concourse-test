@@ -27,6 +27,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 import org.cinchapi.concourse.Concourse;
+import org.cinchapi.concourse.Timestamp;
+import org.cinchapi.concourse.thrift.Operator;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -89,6 +91,25 @@ public class ManagedConcourseServerTest {
         Concourse concourse = server.connect();
         concourse.add("foo", "bar", 1);
         Assert.assertEquals("bar", concourse.get("foo", 1));
+    }
+    
+    @Test
+    public void testClientFind(){
+        server.start();
+        Concourse concourse = server.connect();
+        concourse.add("foo", 1, 1);
+        Assert.assertTrue(concourse.find("foo", Operator.EQUALS, 1).contains(1L));
+    }
+    
+    @Test
+    public void testClientFindWithTime(){
+        server.start();
+        Concourse concourse = server.connect();
+        concourse.add("foo", 1, 1);
+        Timestamp timestamp = Timestamp.now();
+        concourse.add("foo", 1, 2);
+        Assert.assertFalse(concourse.find("foo", Operator.EQUALS, 1, timestamp).contains(2L));
+        
     }
 
 }

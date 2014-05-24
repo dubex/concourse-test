@@ -922,13 +922,13 @@ public class ManagedConcourseServer {
                                     .getMethod("fromMicros", long.class)
                                     .invoke(null, obj.getMicros());
                         }
-                        else if(args[i] == Operator.class) {
+                        else if(args[i] instanceof Operator) {
                             Operator obj = (Operator) args[i];
                             args[i] = loader
                                     .loadClass(
                                             "org.cinchapi.concourse.thrift.Operator")
                                     .getMethod("findByValue", int.class)
-                                    .invoke(null, obj.ordinal());
+                                    .invoke(null, obj.ordinal() + 1);
                         }
                         else{
                             continue;
