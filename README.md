@@ -7,7 +7,7 @@ The concourse-test framework is designed to allow developers to write end-to-end
 
 ### Versioning
 
-This is version 1.1.0 of the concourse-config-framework.
+This is version 1.1.1 of the concourse-config-framework.
 
 This project will be maintained under the [Semantic Versioning](http://semver.org)
 guidelines such that release versions will be formatted as `<major>.<minor>.<patch>`
