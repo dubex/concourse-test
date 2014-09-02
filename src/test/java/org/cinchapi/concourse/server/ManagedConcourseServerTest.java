@@ -41,7 +41,7 @@ import org.junit.runner.Description;
  * @author jnelson
  */
 public class ManagedConcourseServerTest {
-    
+
     private ManagedConcourseServer server = null;
 
     @Rule
@@ -71,45 +71,46 @@ public class ManagedConcourseServerTest {
         server.stop();
         Assert.assertFalse(server.isRunning());
     }
-    
+
     @Test
-    public void testIsRunning(){
+    public void testIsRunning() {
         Assert.assertFalse(server.isRunning());
         server.start();
         Assert.assertTrue(server.isRunning());
     }
-    
+
     @Test
-    public void testDestroy(){
+    public void testDestroy() {
         server.destroy();
         Assert.assertFalse(Files.exists(Paths.get(server.getInstallDirectory())));
     }
-    
+
     @Test
-    public void testConnectAndInteract(){
+    public void testConnectAndInteract() {
         server.start();
         Concourse concourse = server.connect();
         concourse.add("foo", "bar", 1);
         Assert.assertEquals("bar", concourse.get("foo", 1));
     }
-    
+
     @Test
-    public void testClientFind(){
+    public void testClientFind() {
         server.start();
         Concourse concourse = server.connect();
         concourse.add("foo", 1, 1);
-        Assert.assertTrue(concourse.find("foo", Operator.EQUALS, 1).contains(1L));
+        Assert.assertTrue(concourse.find("foo", Operator.EQUALS, 1)
+                .contains(1L));
     }
-    
+
     @Test
-    public void testClientFindWithTime(){
+    public void testClientFindWithTime() {
         server.start();
         Concourse concourse = server.connect();
         concourse.add("foo", 1, 1);
         Timestamp timestamp = Timestamp.now();
         concourse.add("foo", 1, 2);
-        Assert.assertFalse(concourse.find("foo", Operator.EQUALS, 1, timestamp).contains(2L));
-        
+        Assert.assertFalse(concourse.find("foo", Operator.EQUALS, 1, timestamp)
+                .contains(2L));
     }
 
 }

@@ -25,6 +25,9 @@ package org.cinchapi.concourse.server;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.lang.reflect.Method;
 import java.net.ServerSocket;
 import java.net.SocketException;
@@ -40,11 +43,18 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import javax.management.MBeanServerConnection;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
+
 import jline.TerminalFactory;
 
 import org.cinchapi.concourse.Concourse;
 import org.cinchapi.concourse.Timestamp;
 import org.cinchapi.concourse.config.ConcoursePreferences;
+import org.cinchapi.concourse.lang.Criteria;
 import org.cinchapi.concourse.thrift.Operator;
 import org.cinchapi.concourse.time.Time;
 import org.cinchapi.concourse.util.ConcourseServerDownloader;
@@ -133,6 +143,7 @@ public class ManagedConcourseServer {
         prefs.setBufferDirectory(data + File.separator + "buffer");
         prefs.setDatabaseDirectory(data + File.separator + "database");
         prefs.setClientPort(getOpenPort());
+        prefs.setJmxPort(getOpenPort());
         prefs.setLogLevel(Level.DEBUG);
         prefs.setShutdownPort(getOpenPort());
     }
@@ -299,6 +310,12 @@ public class ManagedConcourseServer {
     private final ConcoursePreferences prefs;
 
     /**
+     * A connection to the remote MBean server running in the managed
+     * concourse-server process.
+     */
+    private MBeanServerConnection mBeanServerConnection = null;
+
+    /**
      * Construct a new instance.
      * 
      * @param installDirectory
@@ -373,12 +390,70 @@ public class ManagedConcourseServer {
     }
 
     /**
+     * Get a collection of stats about the heap memory usage for the managed
+     * concourse-server process.
+     * 
+     * @return the heap memory usage
+     */
+    public MemoryUsage getHeapMemoryStats() {
+        try {
+            MemoryMXBean memory = ManagementFactory.newPlatformMXBeanProxy(
+                    getMBeanServerConnection(),
+                    ManagementFactory.MEMORY_MXBEAN_NAME, MemoryMXBean.class);
+            return memory.getHeapMemoryUsage();
+        }
+        catch (Exception e) {
+            throw Throwables.propagate(e);
+        }
+    }
+
+    /**
      * Return the {@link #installDirectory} for this server.
      * 
      * @return the install directory
      */
     public String getInstallDirectory() {
         return installDirectory;
+    }
+
+    /**
+     * Return the connection to the MBean sever of the managed concourse-server
+     * process.
+     * 
+     * @return the mbean server connection
+     */
+    public MBeanServerConnection getMBeanServerConnection() {
+        if(mBeanServerConnection == null) {
+            try {
+                JMXServiceURL url = new JMXServiceURL(
+                        "service:jmx:rmi:///jndi/rmi://localhost:"
+                                + prefs.getJmxPort() + "/jmxrmi");
+                JMXConnector connector = JMXConnectorFactory.connect(url);
+                mBeanServerConnection = connector.getMBeanServerConnection();
+            }
+            catch (Exception e) {
+                throw Throwables.propagate(e);
+            }
+        }
+        return mBeanServerConnection;
+    }
+
+    /**
+     * Get a collection of stats about the non heap memory usage for the managed
+     * concourse-server process.
+     * 
+     * @return the non-heap memory usage
+     */
+    public MemoryUsage getNonHeapMemoryStats() {
+        try {
+            MemoryMXBean memory = ManagementFactory.newPlatformMXBeanProxy(
+                    getMBeanServerConnection(),
+                    ManagementFactory.MEMORY_MXBEAN_NAME, MemoryMXBean.class);
+            return memory.getNonHeapMemoryUsage();
+        }
+        catch (Exception e) {
+            throw Throwables.propagate(e);
+        }
     }
 
     /**
@@ -529,6 +604,67 @@ public class ManagedConcourseServer {
         }
 
         @Override
+        public Map<Long, Map<String, Set<Object>>> browse(
+                Collection<Long> records) {
+            return invoke("browse", Collection.class).with(records);
+        }
+
+        @Override
+        public Map<Long, Map<String, Set<Object>>> browse(
+                Collection<Long> records, Timestamp timestamp) {
+            return invoke("browse", Collection.class, Timestamp.class).with(
+                    records, timestamp);
+        }
+
+        @Override
+        public Map<String, Set<Object>> browse(long record) {
+            return invoke("browse", long.class).with(record);
+        }
+
+        @Override
+        public Map<String, Set<Object>> browse(long record, Timestamp timestamp) {
+            return invoke("browse", long.class, Timestamp.class).with(record,
+                    timestamp);
+        }
+
+        @Override
+        public Map<Object, Set<Long>> browse(String key) {
+            return invoke("browse", String.class).with(key);
+        }
+
+        @Override
+        public Map<Object, Set<Long>> browse(String key, Timestamp timestamp) {
+            return invoke("browse", String.class, Timestamp.class).with(key,
+                    timestamp);
+        }
+
+        @Override
+        public Map<Timestamp, Set<Object>> chronologize(String key, long record) {
+            return invoke("chronologize", String.class, long.class).with(key,
+                    record);
+        }
+
+        @Override
+        public Map<Timestamp, Set<Object>> chronologize(String key,
+                long record, Timestamp start) {
+            return invoke("chronologize", String.class, long.class,
+                    Timestamp.class).with(key, record, start);
+        }
+
+        @Override
+        public Map<Timestamp, Set<Object>> chronologize(String key,
+                long record, Timestamp start, Timestamp end) {
+            return invoke("chronologize", String.class, long.class,
+                    Timestamp.class, Timestamp.class).with(key, record, start,
+                    end);
+        }
+
+        @Override
+        public void clear(Collection<Long> records) {
+            invoke("clear", Collection.class).with(records);
+        }
+
+        @Override
         public void clear(Collection<String> keys, Collection<Long> records) {
             invoke("clear", Collection.class, Collection.class).with(keys,
                     records);
@@ -537,6 +673,11 @@ public class ManagedConcourseServer {
         @Override
         public void clear(Collection<String> keys, long record) {
             invoke("clear", Collection.class, long.class).with(keys, record);
+        }
+
+        @Override
+        public void clear(long record) {
+            invoke("clear", long.class).with(record);
         }
 
         @Override
@@ -643,6 +784,16 @@ public class ManagedConcourseServer {
         }
 
         @Override
+        public Set<Long> find(Criteria criteria) {
+            return invoke("find", Criteria.class).with(criteria);
+        }
+
+        @Override
+        public Set<Long> find(Object criteria) {
+            return invoke("find", Object.class).with(criteria);
+        }
+
+        @Override
         public Set<Long> find(String key, Operator operator, Object value) {
             return invoke("find", String.class, Operator.class, Object.class)
                     .with(key, operator, value);
@@ -722,8 +873,30 @@ public class ManagedConcourseServer {
         }
 
         @Override
+        public String getServerEnvironment() {
+            return invoke("getServerEnvironment").with();
+        }
+
+        @Override
         public String getServerVersion() {
             return invoke("getServerVersion").with();
+        }
+
+        @Override
+        public long insert(String json) {
+            return invoke("insert", String.class).with(json);
+        }
+
+        @Override
+        public Map<Long, Boolean> insert(String json, Collection<Long> records) {
+            return invoke("insert", String.class, Collection.class).with(json,
+                    records);
+        }
+
+        @Override
+        public boolean insert(String json, long record) {
+            return invoke("insert", String.class, long.class)
+                    .with(json, record);
         }
 
         @Override
@@ -867,7 +1040,7 @@ public class ManagedConcourseServer {
                         parameterTypes[i] = loader
                                 .loadClass("org.cinchapi.concourse.thrift.Operator");
                     }
-                    else{
+                    else {
                         continue;
                     }
                 }
@@ -930,7 +1103,7 @@ public class ManagedConcourseServer {
                                     .getMethod("findByValue", int.class)
                                     .invoke(null, obj.ordinal() + 1);
                         }
-                        else{
+                        else {
                             continue;
                         }
                     }
